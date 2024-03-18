@@ -7,6 +7,7 @@ package amqp091
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -156,9 +157,25 @@ func DefaultDial(connectionTimeout time.Duration) func(network, addr string) (ne
 // Dial uses the zero value of tls.Config when it encounters an amqps://
 // scheme.  It is equivalent to calling DialTLS(amqp, nil).
 func Dial(url string) (*Connection, error) {
-	return DialConfig(url, Config{
+	return DialWithContext(context.Background(), url)
+}
+
+func DialWithContext(ctx context.Context, url string) (*Connection, error) {
+	conn, err := DialConfig(url, Config{
 		Locale: defaultLocale,
 	})
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		select {
+		case <-ctx.Done():
+			if conn != nil {
+				_ = conn.Close()
+			}
+		}
+	}()
+	return conn, nil
 }
 
 // DialTLS accepts a string in the AMQP URI format and returns a new Connection

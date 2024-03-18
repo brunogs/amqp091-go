@@ -374,6 +374,26 @@ func TestConnection_Close_WhenMemoryAlarmIsActive(t *testing.T) {
 	}
 }
 
+// TestDialWithContext .
+func TestDialWithContext(t *testing.T) {
+	uri, err := ParseURI(amqpURL)
+	if err != nil {
+		t.Fatalf("parse URI error: %s", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	conn, err := DialWithContext(ctx, uri.String())
+	if err != nil {
+		t.Fatalf("unexpected dial error, got %v", err)
+	}
+	cancel()
+	<-time.After(100 * time.Millisecond) // wait to call cancel asynchronously
+
+	if !conn.IsClosed() {
+		t.Fatal("connection must be closed when ctx is cancelled")
+	}
+}
+
 func rabbitmqctl(t *testing.T, args ...string) error {
 	rabbitmqctlPath, found := os.LookupEnv(rabbitmqctlEnvKey)
 	if !found {
